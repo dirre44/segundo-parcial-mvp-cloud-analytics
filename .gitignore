@@ -1,0 +1,12 @@
+# Datos (se regeneran corriendo el notebook; no se versionan)
+datalake/
+
+# Secretos
+*.zip
+secure_connect_bundle*
+*.token
+
+# Configuración local
+.claude/
+__pycache__/
+*.pyc
