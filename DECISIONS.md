@@ -37,6 +37,10 @@ La consigna pide explícitamente cargar "desde Spark (`foreachBatch` o conector)
 2. **`spark-cassandra-connector` oficial**: es la opción más "nativa", pero su compatibilidad con Spark 4.0 (versión que Colab trae preinstalada al momento de este parcial) es incierta, y requiere matchear versiones de Scala/Spark vía `--packages`. El riesgo de romper la entrega por un problema de versiones no se justificaba para el alcance de este MVP.
 3. **`DataFrame.foreachPartition()` + `cassandra-driver`** (elegido): cada partición de Spark abre su propia conexión a Cassandra y escribe sus filas directamente. Es una escritura distribuida real, sin dependencias de jars externos, y funciona igual de bien en modo local (Colab) que en un clúster real.
 
+## Rendimiento de la carga — `execute_concurrent_with_args` dentro de cada partición
+
+La primera versión de `write_partition_to_astra` hacía un `session.execute()` por fila, secuencial (espera la respuesta del servidor antes de mandar la siguiente). Con 11.050 filas eso medía ~50 escrituras/seg — varios minutos en total. Se cambió a `execute_concurrent_with_args` (hasta 100 requests en vuelo por partición): cada partición sigue abriendo su propia conexión (sigue siendo una escritura distribuida "desde Spark"), pero deja de esperar request por request.
+
 ## Claves de Cassandra (`org_daily_usage_by_service`)
 
 `PRIMARY KEY (org_id, usage_date, service)`, con `CLUSTERING ORDER BY (usage_date DESC, service ASC)`. Diseño query-first: el patrón de acceso principal es "traerme el uso/costo de tal organización en tal rango de fechas" (Query 1), que se resuelve con un filtro por partición (`org_id`) y rango en el primer clustering column (`usage_date`) — sin `ALLOW FILTERING`. La Query 2 (punto exacto org+fecha+servicio) es un caso particular del mismo patrón.
